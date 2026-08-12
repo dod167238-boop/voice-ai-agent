@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -28,6 +32,16 @@ def test():
     }
 
 
+@app.get("/api/key-test")
+def key_test():
+    api_key = os.getenv("OLLAMA_API_KEY")
+
+    return {
+        "configured": bool(api_key),
+        "length": len(api_key) if api_key else 0
+    }
+
+
 @app.post("/chat")
 def chat(data: dict):
 
@@ -40,37 +54,54 @@ def chat(data: dict):
 
     try:
 
-        ollama_response = requests.post(
-            "http://127.0.0.1:11434/api/generate",
+        api_key = os.getenv("OLLAMA_API_KEY")
+
+        if not api_key:
+            return {
+                "response": "OLLAMA_API_KEY is not configured."
+            }
+
+        response = requests.post(
+            "https://ollama.com/api/generate",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
             json={
-                "model": "llama3:latest",
+                "model": "gpt-oss:120b",
                 "prompt": user_message,
                 "stream": False
             },
             timeout=300
         )
 
-        ollama_response.raise_for_status()
+        response.raise_for_status()
 
-        result = ollama_response.json()
+        result = response.json()
 
         return {
             "response": result.get(
                 "response",
-                "Ollama did not return a response."
+                "AI did not return a response."
             )
         }
 
     except requests.exceptions.Timeout:
 
         return {
-            "response": "Ollama took too long to respond."
+            "response": "AI took too long to respond."
         }
 
     except requests.exceptions.ConnectionError:
 
         return {
-            "response": "Cannot connect to Ollama."
+            "response": "Cannot connect to Ollama Cloud."
+        }
+
+    except requests.exceptions.HTTPError as e:
+
+        return {
+            "response": f"Ollama API error: {str(e)}"
         }
 
     except Exception as e:
