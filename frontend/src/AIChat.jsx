@@ -10,12 +10,12 @@ function AIChat() {
   const recognitionRef = useRef(null);
 
   // =========================
-  // AI VOICE
+  // AI TEXT TO SPEECH
   // =========================
 
   const speakText = (text) => {
-    if (!window.speechSynthesis) {
-      console.log("Text to Speech supported nahi hai");
+    if (!("speechSynthesis" in window)) {
+      console.log("Text to Speech supported nahi hai.");
       return;
     }
 
@@ -24,7 +24,7 @@ function AIChat() {
     const speech = new SpeechSynthesisUtterance(text);
 
     speech.lang = "en-US";
-    speech.rate = 1;
+    speech.rate = 0.95;
     speech.pitch = 1;
     speech.volume = 1;
 
@@ -36,7 +36,8 @@ function AIChat() {
       setSpeaking(false);
     };
 
-    speech.onerror = () => {
+    speech.onerror = (error) => {
+      console.error("Speech error:", error);
       setSpeaking(false);
     };
 
@@ -44,11 +45,14 @@ function AIChat() {
   };
 
   // =========================
-  // STOP VOICE
+  // STOP SPEAKING
   // =========================
 
   const stopSpeaking = () => {
-    window.speechSynthesis.cancel();
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
     setSpeaking(false);
   };
 
@@ -59,9 +63,11 @@ function AIChat() {
   const sendMessage = async (text, isVoice = false) => {
     const userMessage = text.trim();
 
-    if (!userMessage || loading) return;
+    if (!userMessage || loading) {
+      return;
+    }
 
-    // User message screen par
+    // Show user message
     setMessages((prev) => [
       ...prev,
       {
@@ -91,14 +97,12 @@ function AIChat() {
       );
 
       if (!response.ok) {
-        throw new Error(
-          `Backend Error: ${response.status}`
-        );
+        throw new Error(`Backend Error: ${response.status}`);
       }
 
       const data = await response.json();
 
-      console.log("AI:", data);
+      console.log("AI Response:", data);
 
       const aiResponse =
         data.response ||
@@ -107,7 +111,7 @@ function AIChat() {
         data.reply ||
         "AI response nahi mila.";
 
-      // AI TEXT RESPONSE
+      // Show AI text response
       setMessages((prev) => [
         ...prev,
         {
@@ -117,11 +121,10 @@ function AIChat() {
       ]);
 
       // IMPORTANT:
-      // Sirf voice input par AI bolega
+      // Sirf microphone se poochne par AI bolega.
       if (isVoice) {
         speakText(aiResponse);
       }
-
     } catch (error) {
       console.error("Chat Error:", error);
 
@@ -139,11 +142,13 @@ function AIChat() {
   };
 
   // =========================
-  // TEXT SEND
+  // TEXT MESSAGE
   // =========================
 
   const sendTextMessage = () => {
-    if (!message.trim()) return;
+    if (!message.trim()) {
+      return;
+    }
 
     sendMessage(message, false);
   };
@@ -164,7 +169,9 @@ function AIChat() {
       return;
     }
 
-    if (listening) return;
+    if (listening || loading) {
+      return;
+    }
 
     const recognition = new SpeechRecognition();
 
@@ -174,7 +181,7 @@ function AIChat() {
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
-      console.log("Listening...");
+      console.log("Microphone listening...");
       setListening(true);
     };
 
@@ -182,14 +189,13 @@ function AIChat() {
       const voiceText =
         event.results[0][0].transcript.trim();
 
-      console.log("You said:", voiceText);
+      console.log("User said:", voiceText);
 
       if (voiceText) {
         setMessage(voiceText);
 
-        // IMPORTANT:
-        // Voice input = true
-        // Is wajah se AI voice mein jawab dega
+        // TRUE = voice input
+        // Isliye AI voice mein jawab dega.
         sendMessage(voiceText, true);
       }
     };
@@ -212,7 +218,11 @@ function AIChat() {
     try {
       recognition.start();
     } catch (error) {
-      console.error(error);
+      console.error(
+        "Could not start microphone:",
+        error
+      );
+
       setListening(false);
     }
   };
@@ -250,10 +260,10 @@ function AIChat() {
           </div>
 
           <div>
-            <h2>AI Assistant</h2>
+            <h2>Dreamy World AI</h2>
 
             <p>
-              Ollama Powered
+              Property Assistant
             </p>
           </div>
 
@@ -272,6 +282,7 @@ function AIChat() {
       <div className="messages">
 
         {messages.length === 0 && (
+
           <div className="welcome">
 
             <div className="ai-circle">
@@ -283,24 +294,28 @@ function AIChat() {
             </h2>
 
             <p>
-              Type your message or speak
-              with your AI agent.
+              Ask me about properties,
+              buying, renting or real estate.
             </p>
 
           </div>
+
         )}
 
 
         {messages.map((item, index) => (
+
           <div
             key={index}
             className={`message-row ${item.role}`}
           >
 
             {item.role === "assistant" && (
+
               <div className="mini-ai">
                 AI
               </div>
+
             )}
 
             <div className="message">
@@ -308,12 +323,14 @@ function AIChat() {
             </div>
 
           </div>
+
         ))}
 
 
         {/* LOADING */}
 
         {loading && (
+
           <div className="message-row assistant">
 
             <div className="mini-ai">
@@ -329,6 +346,7 @@ function AIChat() {
             </div>
 
           </div>
+
         )}
 
       </div>
@@ -347,12 +365,13 @@ function AIChat() {
           }`}
           onClick={startVoice}
           disabled={loading}
+          title="Talk to AI"
         >
           {listening ? "🔴" : "🎙️"}
         </button>
 
 
-        {/* TEXT BOX */}
+        {/* TEXT INPUT */}
 
         <textarea
           value={message}
@@ -363,13 +382,13 @@ function AIChat() {
           placeholder={
             listening
               ? "Listening..."
-              : "Type or speak your message..."
+              : "Type your property question..."
           }
           rows={1}
         />
 
 
-        {/* SEND */}
+        {/* SEND BUTTON */}
 
         <button
           type="button"
@@ -390,14 +409,15 @@ function AIChat() {
       <div className="input-info">
 
         <span>
-          🎙️ Voice
+          🎙️ Voice → Voice
         </span>
 
         <span>
-          ⌨️ Text
+          ⌨️ Text → Text
         </span>
 
         {speaking && (
+
           <button
             type="button"
             onClick={stopSpeaking}
@@ -409,6 +429,7 @@ function AIChat() {
           >
             🛑 Stop Voice
           </button>
+
         )}
 
       </div>
