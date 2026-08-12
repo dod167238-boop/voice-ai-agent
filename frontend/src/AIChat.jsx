@@ -8,11 +8,16 @@ function AIChat() {
 
   const recognitionRef = useRef(null);
 
+  // =========================
+  // SEND MESSAGE TO AI
+  // =========================
+
   const sendMessage = async (text = message) => {
     if (!text.trim() || loading) return;
 
     const userMessage = text.trim();
 
+    // Add user message
     setMessages((prev) => [
       ...prev,
       {
@@ -25,6 +30,7 @@ function AIChat() {
     setLoading(true);
 
     try {
+      // LIVE FASTAPI BACKEND
       const response = await fetch(
         "https://voice-ai-agent.fastapicloud.dev/chat",
         {
@@ -41,7 +47,9 @@ function AIChat() {
       );
 
       if (!response.ok) {
-        throw new Error("Backend request failed");
+        throw new Error(
+          `Backend request failed: ${response.status}`
+        );
       }
 
       const data = await response.json();
@@ -53,6 +61,7 @@ function AIChat() {
         data.reply ||
         "AI response nahi mila.";
 
+      // Add AI response
       setMessages((prev) => [
         ...prev,
         {
@@ -71,14 +80,14 @@ function AIChat() {
             "AI se connection nahi ho raha. Please thori dair baad try karein.",
         },
       ]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  /* =========================
-     VOICE INPUT
-  ========================= */
+  // =========================
+  // VOICE INPUT
+  // =========================
 
   const startVoice = () => {
     const SpeechRecognition =
@@ -112,7 +121,11 @@ function AIChat() {
     };
 
     recognition.onerror = (event) => {
-      console.error("Voice error:", event.error);
+      console.error(
+        "Voice recognition error:",
+        event.error
+      );
+
       setListening(false);
     };
 
@@ -122,12 +135,17 @@ function AIChat() {
 
     recognitionRef.current = recognition;
 
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (error) {
+      console.error("Microphone error:", error);
+      setListening(false);
+    }
   };
 
-  /* =========================
-     ENTER KEY
-  ========================= */
+  // =========================
+  // ENTER KEY
+  // =========================
 
   const handleKeyDown = (event) => {
     if (
@@ -135,9 +153,14 @@ function AIChat() {
       !event.shiftKey
     ) {
       event.preventDefault();
+
       sendMessage();
     }
   };
+
+  // =========================
+  // UI
+  // =========================
 
   return (
     <section className="chat-box">
@@ -169,6 +192,7 @@ function AIChat() {
 
       </div>
 
+
       {/* MESSAGES */}
 
       <div className="messages">
@@ -186,13 +210,14 @@ function AIChat() {
             </h2>
 
             <p>
-              Type your message or use the microphone
-              to talk with your AI agent.
+              Type your message or use the
+              microphone to talk with your AI agent.
             </p>
 
           </div>
 
         )}
+
 
         {messages.map((item, index) => (
 
@@ -202,9 +227,11 @@ function AIChat() {
           >
 
             {item.role === "assistant" && (
+
               <div className="mini-ai">
                 AI
               </div>
+
             )}
 
             <div className="message">
@@ -214,6 +241,9 @@ function AIChat() {
           </div>
 
         ))}
+
+
+        {/* TYPING */}
 
         {loading && (
 
@@ -237,11 +267,15 @@ function AIChat() {
 
       </div>
 
+
       {/* INPUT */}
 
       <div className="input-area">
 
+        {/* MICROPHONE */}
+
         <button
+          type="button"
           className={`mic-button ${
             listening ? "listening" : ""
           }`}
@@ -250,6 +284,9 @@ function AIChat() {
         >
           🎙️
         </button>
+
+
+        {/* TEXT INPUT */}
 
         <textarea
           value={message}
@@ -262,18 +299,27 @@ function AIChat() {
               ? "Listening..."
               : "Type or speak your message..."
           }
-          rows="1"
+          rows={1}
         />
 
+
+        {/* SEND */}
+
         <button
+          type="button"
           className="send-button"
           onClick={() => sendMessage()}
-          disabled={!message.trim() || loading}
+          disabled={
+            !message.trim() || loading
+          }
         >
           ➤
         </button>
 
       </div>
+
+
+      {/* INPUT INFO */}
 
       <div className="input-info">
 
