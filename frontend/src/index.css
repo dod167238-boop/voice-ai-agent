@@ -1,0 +1,26 @@
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+
+  width: 100%;
+  min-height: 100%;
+
+  font-family:
+    Inter,
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+body {
+  min-width: 320px;
+
+  min-height: 100vh;
+}
+
+button,
+textarea {
+  font-family: inherit;
+}
