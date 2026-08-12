@@ -26,7 +26,7 @@ function AIChat() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/chat",
+        "https://voice-ai-agent.fastapicloud.dev/chat",
         {
           method: "POST",
 
@@ -60,16 +60,15 @@ function AIChat() {
           text: aiResponse,
         },
       ]);
-
     } catch (error) {
-      console.error(error);
+      console.error("Chat error:", error);
 
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
           text:
-            "Backend se connection nahi ho raha. Check karo FastAPI server running hai.",
+            "AI se connection nahi ho raha. Please thori dair baad try karein.",
         },
       ]);
     }
@@ -96,9 +95,7 @@ function AIChat() {
     const recognition = new SpeechRecognition();
 
     recognition.lang = "en-US";
-
     recognition.continuous = false;
-
     recognition.interimResults = false;
 
     recognition.onstart = () => {
@@ -116,7 +113,6 @@ function AIChat() {
 
     recognition.onerror = (event) => {
       console.error("Voice error:", event.error);
-
       setListening(false);
     };
 
@@ -139,7 +135,6 @@ function AIChat() {
       !event.shiftKey
     ) {
       event.preventDefault();
-
       sendMessage();
     }
   };
@@ -174,7 +169,6 @@ function AIChat() {
 
       </div>
 
-
       {/* MESSAGES */}
 
       <div className="messages">
@@ -200,7 +194,6 @@ function AIChat() {
 
         )}
 
-
         {messages.map((item, index) => (
 
           <div
@@ -221,7 +214,6 @@ function AIChat() {
           </div>
 
         ))}
-
 
         {loading && (
 
@@ -245,7 +237,6 @@ function AIChat() {
 
       </div>
 
-
       {/* INPUT */}
 
       <div className="input-area">
@@ -259,7 +250,6 @@ function AIChat() {
         >
           🎙️
         </button>
-
 
         <textarea
           value={message}
@@ -275,21 +265,18 @@ function AIChat() {
           rows="1"
         />
 
-
         <button
           className="send-button"
           onClick={() => sendMessage()}
-          disabled={
-            !message.trim() || loading
-          }
+          disabled={!message.trim() || loading}
         >
           ➤
         </button>
 
       </div>
 
-
       <div className="input-info">
+
         <span>
           🎙️ Voice
         </span>
@@ -301,6 +288,7 @@ function AIChat() {
         <span>
           Ollama AI
         </span>
+
       </div>
 
     </section>
