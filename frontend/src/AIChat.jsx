@@ -5,8 +5,61 @@ function AIChat() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
 
   const recognitionRef = useRef(null);
+
+  // =========================
+  // AI VOICE RESPONSE
+  // =========================
+
+  const speakText = (text) => {
+    if (!("speechSynthesis" in window)) {
+      console.log("Speech synthesis not supported");
+      return;
+    }
+
+    // Stop previous speech
+    window.speechSynthesis.cancel();
+
+    const cleanText = String(text || "").trim();
+
+    if (!cleanText) return;
+
+    const speech = new SpeechSynthesisUtterance(cleanText);
+
+    speech.lang = "en-US";
+    speech.rate = 1;
+    speech.pitch = 1;
+    speech.volume = 1;
+
+    speech.onstart = () => {
+      setSpeaking(true);
+    };
+
+    speech.onend = () => {
+      setSpeaking(false);
+    };
+
+    speech.onerror = (error) => {
+      console.error("Speech error:", error);
+      setSpeaking(false);
+    };
+
+    window.speechSynthesis.speak(speech);
+  };
+
+  // =========================
+  // STOP AI VOICE
+  // =========================
+
+  const stopSpeaking = () => {
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    setSpeaking(false);
+  };
 
   // =========================
   // SEND MESSAGE TO AI
@@ -32,7 +85,6 @@ function AIChat() {
     setLoading(true);
 
     try {
-      // LIVE FASTAPI CLOUD BACKEND
       const response = await fetch(
         "https://voice-ai-agent.fastapicloud.dev/chat",
         {
@@ -66,7 +118,7 @@ function AIChat() {
         data.reply ||
         "AI response nahi mila.";
 
-      // Show AI response
+      // Show AI text
       setMessages((prev) => [
         ...prev,
         {
@@ -74,17 +126,24 @@ function AIChat() {
           text: aiResponse,
         },
       ]);
+
+      // 🔊 AI SPEAKS
+      speakText(aiResponse);
+
     } catch (error) {
       console.error("Chat error:", error);
+
+      const errorMessage =
+        "AI se connection nahi ho raha. Please thori dair baad try karein.";
 
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          text:
-            "AI se connection nahi ho raha. Please thori dair baad try karein.",
+          text: errorMessage,
         },
       ]);
+
     } finally {
       setLoading(false);
     }
@@ -112,9 +171,7 @@ function AIChat() {
 
     const recognition = new SpeechRecognition();
 
-    // English voice recognition
     recognition.lang = "en-US";
-
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
@@ -132,6 +189,8 @@ function AIChat() {
 
       if (voiceText) {
         setMessage(voiceText);
+
+        // Send voice text to AI
         sendMessage(voiceText);
       }
     };
@@ -192,9 +251,7 @@ function AIChat() {
   return (
     <section className="chat-box">
 
-      {/* =========================
-          HEADER
-      ========================= */}
+      {/* HEADER */}
 
       <div className="chat-header">
 
@@ -222,13 +279,9 @@ function AIChat() {
       </div>
 
 
-      {/* =========================
-          MESSAGES
-      ========================= */}
+      {/* MESSAGES */}
 
       <div className="messages">
-
-        {/* WELCOME */}
 
         {messages.length === 0 && (
           <div className="welcome">
@@ -242,15 +295,13 @@ function AIChat() {
             </h2>
 
             <p>
-              Type your message or use the
-              microphone to talk with your AI agent.
+              Speak or type your message
+              and I will answer you.
             </p>
 
           </div>
         )}
 
-
-        {/* MESSAGE LIST */}
 
         {messages.map((item, index) => (
           <div
@@ -295,9 +346,7 @@ function AIChat() {
       </div>
 
 
-      {/* =========================
-          INPUT AREA
-      ========================= */}
+      {/* INPUT */}
 
       <div className="input-area">
 
@@ -309,10 +358,10 @@ function AIChat() {
             listening ? "listening" : ""
           }`}
           onClick={startVoice}
+          disabled={loading}
           title="Voice input"
-          aria-label="Voice input"
         >
-          🎙️
+          {listening ? "🔴" : "🎙️"}
         </button>
 
 
@@ -334,7 +383,7 @@ function AIChat() {
         />
 
 
-        {/* SEND BUTTON */}
+        {/* SEND */}
 
         <button
           type="button"
@@ -343,7 +392,6 @@ function AIChat() {
           disabled={
             !message.trim() || loading
           }
-          aria-label="Send message"
         >
           ➤
         </button>
@@ -351,23 +399,31 @@ function AIChat() {
       </div>
 
 
-      {/* =========================
-          INPUT INFO
-      ========================= */}
+      {/* VOICE CONTROL */}
 
       <div className="input-info">
 
         <span>
-          🎙️ Voice
+          🎙️ Voice Input
         </span>
 
         <span>
-          Enter to send
+          🔊 AI Voice
         </span>
 
-        <span>
-          Ollama AI
-        </span>
+        {speaking && (
+          <button
+            type="button"
+            onClick={stopSpeaking}
+            style={{
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+            }}
+          >
+            🛑 Stop Voice
+          </button>
+        )}
 
       </div>
 
