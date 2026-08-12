@@ -13,11 +13,13 @@ function AIChat() {
   // =========================
 
   const sendMessage = async (text = message) => {
-    if (!text.trim() || loading) return;
-
     const userMessage = text.trim();
 
-    // Add user message
+    if (!userMessage || loading) {
+      return;
+    }
+
+    // Show user message
     setMessages((prev) => [
       ...prev,
       {
@@ -30,7 +32,7 @@ function AIChat() {
     setLoading(true);
 
     try {
-      // LIVE FASTAPI BACKEND
+      // LIVE FASTAPI CLOUD BACKEND
       const response = await fetch(
         "https://voice-ai-agent.fastapicloud.dev/chat",
         {
@@ -38,6 +40,7 @@ function AIChat() {
 
           headers: {
             "Content-Type": "application/json",
+            Accept: "application/json",
           },
 
           body: JSON.stringify({
@@ -54,6 +57,8 @@ function AIChat() {
 
       const data = await response.json();
 
+      console.log("AI Response:", data);
+
       const aiResponse =
         data.response ||
         data.answer ||
@@ -61,7 +66,7 @@ function AIChat() {
         data.reply ||
         "AI response nahi mila.";
 
-      // Add AI response
+      // Show AI response
       setMessages((prev) => [
         ...prev,
         {
@@ -101,23 +106,34 @@ function AIChat() {
       return;
     }
 
+    if (listening) {
+      return;
+    }
+
     const recognition = new SpeechRecognition();
 
+    // English voice recognition
     recognition.lang = "en-US";
+
     recognition.continuous = false;
     recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
+      console.log("Microphone started");
       setListening(true);
     };
 
     recognition.onresult = (event) => {
       const voiceText =
-        event.results[0][0].transcript;
+        event.results[0][0].transcript.trim();
 
-      setMessage(voiceText);
+      console.log("Voice text:", voiceText);
 
-      sendMessage(voiceText);
+      if (voiceText) {
+        setMessage(voiceText);
+        sendMessage(voiceText);
+      }
     };
 
     recognition.onerror = (event) => {
@@ -127,9 +143,16 @@ function AIChat() {
       );
 
       setListening(false);
+
+      if (event.error === "not-allowed") {
+        alert(
+          "Microphone permission allow karein."
+        );
+      }
     };
 
     recognition.onend = () => {
+      console.log("Microphone stopped");
       setListening(false);
     };
 
@@ -138,7 +161,11 @@ function AIChat() {
     try {
       recognition.start();
     } catch (error) {
-      console.error("Microphone error:", error);
+      console.error(
+        "Microphone start error:",
+        error
+      );
+
       setListening(false);
     }
   };
@@ -165,7 +192,9 @@ function AIChat() {
   return (
     <section className="chat-box">
 
-      {/* HEADER */}
+      {/* =========================
+          HEADER
+      ========================= */}
 
       <div className="chat-header">
 
@@ -193,12 +222,15 @@ function AIChat() {
       </div>
 
 
-      {/* MESSAGES */}
+      {/* =========================
+          MESSAGES
+      ========================= */}
 
       <div className="messages">
 
-        {messages.length === 0 && (
+        {/* WELCOME */}
 
+        {messages.length === 0 && (
           <div className="welcome">
 
             <div className="ai-circle">
@@ -215,23 +247,21 @@ function AIChat() {
             </p>
 
           </div>
-
         )}
 
 
-        {messages.map((item, index) => (
+        {/* MESSAGE LIST */}
 
+        {messages.map((item, index) => (
           <div
             key={index}
             className={`message-row ${item.role}`}
           >
 
             {item.role === "assistant" && (
-
               <div className="mini-ai">
                 AI
               </div>
-
             )}
 
             <div className="message">
@@ -239,14 +269,12 @@ function AIChat() {
             </div>
 
           </div>
-
         ))}
 
 
-        {/* TYPING */}
+        {/* LOADING */}
 
         {loading && (
-
           <div className="message-row assistant">
 
             <div className="mini-ai">
@@ -262,13 +290,14 @@ function AIChat() {
             </div>
 
           </div>
-
         )}
 
       </div>
 
 
-      {/* INPUT */}
+      {/* =========================
+          INPUT AREA
+      ========================= */}
 
       <div className="input-area">
 
@@ -281,6 +310,7 @@ function AIChat() {
           }`}
           onClick={startVoice}
           title="Voice input"
+          aria-label="Voice input"
         >
           🎙️
         </button>
@@ -290,9 +320,9 @@ function AIChat() {
 
         <textarea
           value={message}
-          onChange={(event) =>
-            setMessage(event.target.value)
-          }
+          onChange={(event) => {
+            setMessage(event.target.value);
+          }}
           onKeyDown={handleKeyDown}
           placeholder={
             listening
@@ -300,10 +330,11 @@ function AIChat() {
               : "Type or speak your message..."
           }
           rows={1}
+          disabled={loading}
         />
 
 
-        {/* SEND */}
+        {/* SEND BUTTON */}
 
         <button
           type="button"
@@ -312,6 +343,7 @@ function AIChat() {
           disabled={
             !message.trim() || loading
           }
+          aria-label="Send message"
         >
           ➤
         </button>
@@ -319,7 +351,9 @@ function AIChat() {
       </div>
 
 
-      {/* INPUT INFO */}
+      {/* =========================
+          INPUT INFO
+      ========================= */}
 
       <div className="input-info">
 
