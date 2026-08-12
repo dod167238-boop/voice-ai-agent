@@ -23,7 +23,9 @@ function AIChat() {
 
     const speech = new SpeechSynthesisUtterance(text);
 
+    // English / Roman Urdu ke liye
     speech.lang = "en-US";
+
     speech.rate = 0.95;
     speech.pitch = 1;
     speech.volume = 1;
@@ -45,7 +47,7 @@ function AIChat() {
   };
 
   // =========================
-  // STOP SPEAKING
+  // STOP AI VOICE
   // =========================
 
   const stopSpeaking = () => {
@@ -57,7 +59,7 @@ function AIChat() {
   };
 
   // =========================
-  // SEND MESSAGE
+  // SEND MESSAGE TO BACKEND
   // =========================
 
   const sendMessage = async (text, isVoice = false) => {
@@ -67,7 +69,7 @@ function AIChat() {
       return;
     }
 
-    // Show user message
+    // User message
     setMessages((prev) => [
       ...prev,
       {
@@ -97,7 +99,9 @@ function AIChat() {
       );
 
       if (!response.ok) {
-        throw new Error(`Backend Error: ${response.status}`);
+        throw new Error(
+          `Backend Error: ${response.status}`
+        );
       }
 
       const data = await response.json();
@@ -111,7 +115,10 @@ function AIChat() {
         data.reply ||
         "AI response nahi mila.";
 
-      // Show AI text response
+      // =========================
+      // AI TEXT RESPONSE
+      // =========================
+
       setMessages((prev) => [
         ...prev,
         {
@@ -120,11 +127,16 @@ function AIChat() {
         },
       ]);
 
-      // IMPORTANT:
-      // Sirf microphone se poochne par AI bolega.
+      // =========================
+      // VOICE INPUT
+      // =========================
+      // Agar user ne mic se poocha hai,
+      // to AI text ke saath voice mein bhi jawab dega.
+
       if (isVoice) {
         speakText(aiResponse);
       }
+
     } catch (error) {
       console.error("Chat Error:", error);
 
@@ -136,6 +148,7 @@ function AIChat() {
             "AI se connection nahi ho raha. Please dobara try karein.",
         },
       ]);
+
     } finally {
       setLoading(false);
     }
@@ -149,6 +162,9 @@ function AIChat() {
     if (!message.trim()) {
       return;
     }
+
+    // false = text input
+    // Isliye AI sirf text mein reply karega.
 
     sendMessage(message, false);
   };
@@ -166,11 +182,20 @@ function AIChat() {
       alert(
         "Aapke browser mein voice recognition supported nahi hai."
       );
+
       return;
     }
 
     if (listening || loading) {
       return;
+    }
+
+    // Agar AI pehle se bol raha hai
+    // to uski voice stop karo.
+
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      setSpeaking(false);
     }
 
     const recognition = new SpeechRecognition();
@@ -195,7 +220,8 @@ function AIChat() {
         setMessage(voiceText);
 
         // TRUE = voice input
-        // Isliye AI voice mein jawab dega.
+        // AI voice mein answer karega.
+
         sendMessage(voiceText, true);
       }
     };
@@ -352,7 +378,7 @@ function AIChat() {
       </div>
 
 
-      {/* INPUT */}
+      {/* INPUT AREA */}
 
       <div className="input-area">
 
