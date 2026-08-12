@@ -10,23 +10,18 @@ function AIChat() {
   const recognitionRef = useRef(null);
 
   // =========================
-  // AI VOICE RESPONSE
+  // AI VOICE
   // =========================
 
   const speakText = (text) => {
-    if (!("speechSynthesis" in window)) {
-      console.log("Speech synthesis not supported");
+    if (!window.speechSynthesis) {
+      console.log("Text to Speech supported nahi hai");
       return;
     }
 
-    // Stop previous speech
     window.speechSynthesis.cancel();
 
-    const cleanText = String(text || "").trim();
-
-    if (!cleanText) return;
-
-    const speech = new SpeechSynthesisUtterance(cleanText);
+    const speech = new SpeechSynthesisUtterance(text);
 
     speech.lang = "en-US";
     speech.rate = 1;
@@ -41,8 +36,7 @@ function AIChat() {
       setSpeaking(false);
     };
 
-    speech.onerror = (error) => {
-      console.error("Speech error:", error);
+    speech.onerror = () => {
       setSpeaking(false);
     };
 
@@ -50,29 +44,24 @@ function AIChat() {
   };
 
   // =========================
-  // STOP AI VOICE
+  // STOP VOICE
   // =========================
 
   const stopSpeaking = () => {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-
+    window.speechSynthesis.cancel();
     setSpeaking(false);
   };
 
   // =========================
-  // SEND MESSAGE TO AI
+  // SEND MESSAGE
   // =========================
 
-  const sendMessage = async (text = message) => {
+  const sendMessage = async (text, isVoice = false) => {
     const userMessage = text.trim();
 
-    if (!userMessage || loading) {
-      return;
-    }
+    if (!userMessage || loading) return;
 
-    // Show user message
+    // User message screen par
     setMessages((prev) => [
       ...prev,
       {
@@ -103,13 +92,13 @@ function AIChat() {
 
       if (!response.ok) {
         throw new Error(
-          `Backend request failed: ${response.status}`
+          `Backend Error: ${response.status}`
         );
       }
 
       const data = await response.json();
 
-      console.log("AI Response:", data);
+      console.log("AI:", data);
 
       const aiResponse =
         data.response ||
@@ -118,7 +107,7 @@ function AIChat() {
         data.reply ||
         "AI response nahi mila.";
 
-      // Show AI text
+      // AI TEXT RESPONSE
       setMessages((prev) => [
         ...prev,
         {
@@ -127,26 +116,36 @@ function AIChat() {
         },
       ]);
 
-      // 🔊 AI SPEAKS
-      speakText(aiResponse);
+      // IMPORTANT:
+      // Sirf voice input par AI bolega
+      if (isVoice) {
+        speakText(aiResponse);
+      }
 
     } catch (error) {
-      console.error("Chat error:", error);
-
-      const errorMessage =
-        "AI se connection nahi ho raha. Please thori dair baad try karein.";
+      console.error("Chat Error:", error);
 
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          text: errorMessage,
+          text:
+            "AI se connection nahi ho raha. Please dobara try karein.",
         },
       ]);
-
     } finally {
       setLoading(false);
     }
+  };
+
+  // =========================
+  // TEXT SEND
+  // =========================
+
+  const sendTextMessage = () => {
+    if (!message.trim()) return;
+
+    sendMessage(message, false);
   };
 
   // =========================
@@ -165,9 +164,7 @@ function AIChat() {
       return;
     }
 
-    if (listening) {
-      return;
-    }
+    if (listening) return;
 
     const recognition = new SpeechRecognition();
 
@@ -177,7 +174,7 @@ function AIChat() {
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
-      console.log("Microphone started");
+      console.log("Listening...");
       setListening(true);
     };
 
@@ -185,33 +182,28 @@ function AIChat() {
       const voiceText =
         event.results[0][0].transcript.trim();
 
-      console.log("Voice text:", voiceText);
+      console.log("You said:", voiceText);
 
       if (voiceText) {
         setMessage(voiceText);
 
-        // Send voice text to AI
-        sendMessage(voiceText);
+        // IMPORTANT:
+        // Voice input = true
+        // Is wajah se AI voice mein jawab dega
+        sendMessage(voiceText, true);
       }
     };
 
     recognition.onerror = (event) => {
       console.error(
-        "Voice recognition error:",
+        "Microphone Error:",
         event.error
       );
 
       setListening(false);
-
-      if (event.error === "not-allowed") {
-        alert(
-          "Microphone permission allow karein."
-        );
-      }
     };
 
     recognition.onend = () => {
-      console.log("Microphone stopped");
       setListening(false);
     };
 
@@ -220,11 +212,7 @@ function AIChat() {
     try {
       recognition.start();
     } catch (error) {
-      console.error(
-        "Microphone start error:",
-        error
-      );
-
+      console.error(error);
       setListening(false);
     }
   };
@@ -240,7 +228,7 @@ function AIChat() {
     ) {
       event.preventDefault();
 
-      sendMessage();
+      sendTextMessage();
     }
   };
 
@@ -295,8 +283,8 @@ function AIChat() {
             </h2>
 
             <p>
-              Speak or type your message
-              and I will answer you.
+              Type your message or speak
+              with your AI agent.
             </p>
 
           </div>
@@ -359,19 +347,18 @@ function AIChat() {
           }`}
           onClick={startVoice}
           disabled={loading}
-          title="Voice input"
         >
           {listening ? "🔴" : "🎙️"}
         </button>
 
 
-        {/* TEXT INPUT */}
+        {/* TEXT BOX */}
 
         <textarea
           value={message}
-          onChange={(event) => {
-            setMessage(event.target.value);
-          }}
+          onChange={(event) =>
+            setMessage(event.target.value)
+          }
           onKeyDown={handleKeyDown}
           placeholder={
             listening
@@ -379,7 +366,6 @@ function AIChat() {
               : "Type or speak your message..."
           }
           rows={1}
-          disabled={loading}
         />
 
 
@@ -388,7 +374,7 @@ function AIChat() {
         <button
           type="button"
           className="send-button"
-          onClick={() => sendMessage()}
+          onClick={sendTextMessage}
           disabled={
             !message.trim() || loading
           }
@@ -399,16 +385,16 @@ function AIChat() {
       </div>
 
 
-      {/* VOICE CONTROL */}
+      {/* BOTTOM INFO */}
 
       <div className="input-info">
 
         <span>
-          🎙️ Voice Input
+          🎙️ Voice
         </span>
 
         <span>
-          🔊 AI Voice
+          ⌨️ Text
         </span>
 
         {speaking && (
